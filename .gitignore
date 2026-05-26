@@ -3,6 +3,8 @@ fuel_rl_checkpoints/
 fuel_rl_tensorboard/
 fuel_rl_data/
 viz_frames/
+viz_reinforce/
+fuel_rl.egg-info/
 
 # Logs
 *.log
@@ -14,10 +16,9 @@ build/
 # Python cache
 __pycache__/
 *.pyc
-*.egg-info/
 
 # Misc
 *.zip
 *.png
 *.jpg
-*.json
+DepthCamera_*.json

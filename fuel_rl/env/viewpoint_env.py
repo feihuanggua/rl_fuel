@@ -129,6 +129,40 @@ class ViewpointEnv(gym.Env):
             pos = vp.copy()
         return self.core.get_exploration_progress()
 
+    def _project_to_valid(self, center, offset_xyz):
+        """将无效偏移投影到最近有效位置.
+
+        从前沿中心沿 offset 方向逐步缩放，找到第一个自由空间点。
+        返回 (valid_pos, scale)，scale ∈ [0, 1]。
+        """
+        direction = offset_xyz.copy()
+        max_dist_vec = np.array([self.max_dist] * 3)
+        target = center + direction * max_dist_vec
+
+        # 先检查原始位置
+        occ = self.core.get_occupancy(target)
+        if occ == 1:
+            bmin, bmax = np.array(self.core.get_box()[0]), np.array(self.core.get_box()[1])
+            in_box = all(bmin[i] < target[i] < bmax[i] for i in range(3))
+            if in_box:
+                return target, 1.0, False
+
+        # 沿方向二分搜索有效位置
+        lo, hi = 0.0, 1.0
+        best_pos, best_scale = center.copy(), 0.0
+        for _ in range(10):  # 10 次二分，精度 ~0.1%
+            mid = (lo + hi) / 2
+            pos = center + direction * max_dist_vec * mid
+            occ = self.core.get_occupancy(pos)
+            bmin, bmax = np.array(self.core.get_box()[0]), np.array(self.core.get_box()[1])
+            in_box = all(bmin[i] < pos[i] < bmax[i] for i in range(3))
+            if occ == 1 and in_box:
+                best_pos, best_scale = pos, mid
+                lo = mid
+            else:
+                hi = mid
+        return best_pos, best_scale, best_scale < 0.01  # too_close = 投影失败
+
     def step(self, action):
         frontier = self.current_frontier
         info = {"error": "none"}
@@ -137,43 +171,38 @@ class ViewpointEnv(gym.Env):
             return self.current_grid, 0.0, True, False, info
 
         center = np.array(frontier.average)
-
-        # 解码动作 (使用 max_dist，与 BC 训练一致)
-        target_pos = center + np.array([
-            action[0] * self.max_dist,
-            action[1] * self.max_dist,
-            action[2] * self.max_dist,
-        ])
+        offset_xyz = np.array([action[0], action[1], action[2]])
         target_yaw = action[3] * np.pi
 
-        # 碰撞检测: 必须是已知自由空间 (FREE=1), 不能是未知(0)或障碍(2)
-        occ = self.core.get_occupancy(target_pos)
-        if occ != 1:
-            return self.current_grid, -1.0, True, False, {"error": "invalid_position"}
+        # 投影到有效位置
+        target_pos, scale, too_close = self._project_to_valid(center, offset_xyz)
 
-        # 出界检测
-        bmin, bmax = self.core.get_box()
-        bmin, bmax = np.array(bmin), np.array(bmax)
-        for i in range(3):
-            if target_pos[i] <= bmin[i] or target_pos[i] >= bmax[i]:
-                return self.current_grid, -1.0, True, False, {"error": "out_of_bounds"}
+        if too_close:
+            # 投影失败 (前沿中心附近无自由空间)，用 best_viewpoint 兜底
+            target_pos = np.array(frontier.best_viewpoint_pos)
+            target_yaw = frontier.best_viewpoint_yaw
+            info["projected"] = "fallback"
+        elif scale < 0.99:
+            info["projected"] = f"scale={scale:.2f}"
 
         # 路径检测
         path = self.core.plan_path(self.agent_pos, target_pos)
         if not path:
-            return self.current_grid, -1.0, True, False, {"error": "no_path"}
+            return self.current_grid, 0.0, True, False, {"error": "no_path"}
 
         # 计算奖励
+        projection_penalty = -0.5 if "projected" in info else 0.0
+
         if self.rollout_steps > 0:
-            # Rollout 模式: 执行视点后 greedy rollout N 步，用覆盖率增量作奖励
             prev_progress = self.core.get_exploration_progress()
             self.core.simulate_observation(target_pos, target_yaw)
             final_progress = self._rollout(target_pos, self.rollout_steps)
-            reward = (final_progress - prev_progress) * 100.0  # 放大到合理量级
+            reward = (final_progress - prev_progress) * 100.0 + projection_penalty
 
             return self.current_grid, float(reward), True, False, {
                 "rollout_coverage_delta": final_progress - prev_progress,
                 "rollout_steps": self.rollout_steps,
+                "projected": info.get("projected", False),
             }
         else:
             # 即时奖励模式 (原始逻辑)

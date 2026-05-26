@@ -86,9 +86,6 @@ def train(args):
     best_avg = -float("inf")
     all_rewards = []
     all_deltas = []
-    reward_ema = 0.0
-    reward_var = 1.0
-    reward_std = 1.0
 
     for step in range(1, args.total_steps + 1):
         obs, _ = env.reset()
@@ -101,13 +98,7 @@ def train(args):
         if "rollout_coverage_delta" in info:
             all_deltas.append(info["rollout_coverage_delta"])
 
-        # 在线标准化 reward (Welford's)
-        reward_ema = 0.99 * reward_ema + 0.01 * reward
-        reward_var = 0.99 * reward_var + 0.01 * (reward - reward_ema) ** 2 if step > 1 else 1.0
-        reward_std = max((reward_var if step > 1 else 1.0) ** 0.5, 0.1)
-        norm_reward = (reward - reward_ema) / reward_std
-
-        advantage = norm_reward
+        advantage = reward - baseline
         loss = -log_prob_t.mean() * advantage
 
         opt.zero_grad()
