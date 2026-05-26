@@ -1,0 +1,23 @@
+# Generated / large files
+fuel_rl_checkpoints/
+fuel_rl_tensorboard/
+fuel_rl_data/
+viz_frames/
+
+# Logs
+*.log
+
+# Compiled
+*.so
+build/
+
+# Python cache
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Misc
+*.zip
+*.png
+*.jpg
+*.json
