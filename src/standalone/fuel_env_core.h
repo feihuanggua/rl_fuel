@@ -37,6 +37,7 @@ public:
 
   // Simulate sensor observation at a viewpoint
   void simulateObservation(const Eigen::Vector3d& camera_pos, double yaw);
+  void inputHitPoints(const std::vector<Eigen::Vector3d>& hit_points, const Eigen::Vector3d& camera_pos);
 
   // Frontier detection
   std::vector<FrontierInfo> detectFrontiers(const Eigen::Vector3d& agent_pos);

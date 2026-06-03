@@ -97,7 +97,7 @@ def create_path_line(path_pts, color=[0.2, 0.6, 1.0]):
 
 # ── 主探索逻辑 ──
 
-def run_exploration(seed=42, max_steps=150, model_path='./fuel_rl_checkpoints/ppo_v2/best_model.pth'):
+def run_exploration(seed=42, max_steps=150, model_path='./fuel_rl_checkpoints/sac_seq2/actor_1000.pth'):
     """先跑探索，记录每步快照，再交互回放."""
     print(f"加载模型: {model_path}")
     encoder = Encoder3D(input_shape=(GRID_SIZE, GRID_SIZE, GRID_Z),
@@ -404,7 +404,7 @@ def play_3d(snapshots, res):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="./fuel_rl_checkpoints/ppo_v2/best_model.pth")
+    parser.add_argument("--model", default="./fuel_rl_checkpoints/sac_seq2/actor_4000.pth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-steps", type=int, default=150)
     args = parser.parse_args()

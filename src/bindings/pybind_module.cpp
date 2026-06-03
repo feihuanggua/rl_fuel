@@ -73,6 +73,7 @@ PYBIND11_MODULE(fuel_rl_core, m) {
       .def("load_map_from_points", &fuel_rl::FuelEnvCore::loadMapFromPoints)
       .def("reset_map", &fuel_rl::FuelEnvCore::resetMap)
       .def("simulate_observation", &fuel_rl::FuelEnvCore::simulateObservation)
+      .def("input_hit_points", &fuel_rl::FuelEnvCore::inputHitPoints)
       .def("detect_frontiers", &fuel_rl::FuelEnvCore::detectFrontiers)
       .def("plan_path", &fuel_rl::FuelEnvCore::planPath)
       .def("compute_path_cost", &fuel_rl::FuelEnvCore::computePathCost)

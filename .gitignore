@@ -22,3 +22,11 @@ __pycache__/
 *.png
 *.jpg
 DepthCamera_*.json
+backup_*/
+*.egg-info/
+experiment/
+legacy/
+eval_results*.txt
+reinforce_*.png
+train_sac_*.log
+train_ppo_*.log

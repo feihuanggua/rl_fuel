@@ -1,6 +1,16 @@
 #include "fuel_env_core.h"
+#include <iostream>
+#include <chrono>
 
 namespace fuel_rl {
+
+static auto now() { return std::chrono::steady_clock::now(); }
+static double ms_since(std::chrono::steady_clock::time_point t0) {
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+}
+static double elapsed_ms(std::chrono::steady_clock::time_point from, std::chrono::steady_clock::time_point to) {
+  return std::chrono::duration<double, std::milli>(to - from).count();
+}
 
 FuelEnvCore::FuelEnvCore() {}
 
@@ -100,6 +110,7 @@ void FuelEnvCore::setGroundPlane(bool enable, double height) {
 }
 
 void FuelEnvCore::simulateObservation(const Eigen::Vector3d& camera_pos, double yaw) {
+  auto t0 = now();
   // FUEL pinhole camera parameters (matching camera.yaml and exploration.launch)
   const int width = 640, height = 480;
   const double fx = 387.229, fy = 387.229, cx = 321.046, cy = 243.449;
@@ -135,16 +146,16 @@ void FuelEnvCore::simulateObservation(const Eigen::Vector3d& camera_pos, double 
 
   double resolution = sdf_map_->getResolution();
 
-  for (int v = margin; v < height - margin; v += skip_pixel) {
-    for (int u = margin; u < width - margin; u += skip_pixel) {
-      // Ray direction in camera frame (pinhole model)
+  int ray_idx = 0;
+  auto deadline = now() + std::chrono::seconds(10);
+  bool timeout = false;
+  for (int v = margin; v < height - margin && !timeout; v += skip_pixel) {
+    for (int u = margin; u < width - margin && !timeout; u += skip_pixel) {
+      ray_idx++;
       Eigen::Vector3d dir_cam((u - cx) / fx, (v - cy) / fy, 1.0);
       dir_cam.normalize();
-
-      // Transform to world frame
       Eigen::Vector3d ray_dir = R_wc * dir_cam;
 
-      // Cast ray against ground-truth point cloud
       double step_size = resolution * 2.0;
       bool hit = false;
       for (double t = step_size; t < max_range; t += step_size) {
@@ -161,27 +172,60 @@ void FuelEnvCore::simulateObservation(const Eigen::Vector3d& camera_pos, double 
           break;
         }
       }
-      // No hit: add point at depth_filter_maxdist (5.0m, matching FUEL's behavior).
-      // Must exceed max_ray_length (4.5m) so inputPointCloud treats it as free space.
       if (!hit) {
         static const double depth_filter_maxdist = 5.0;
         Eigen::Vector3d free_pt = cam_pos_world + depth_filter_maxdist * ray_dir;
         hit_points.push_back(free_pt);
       }
+      if (ray_idx % 2000 == 0 && now() > deadline) {
+        std::cerr << "[sim_obs TIMEOUT] ray " << ray_idx << " exceeded 10s, aborting rays" << std::endl;
+        timeout = true;
+      }
     }
   }
 
   if (!hit_points.empty()) {
+    auto t1 = now();
     sdf_map_->inputPointCloud(hit_points, camera_pos);
+    auto t2 = now();
     sdf_map_->clearAndInflateLocalMap();
+    auto t3 = now();
     sdf_map_->updateESDF3d();
+    auto t4 = now();
+    double total = ms_since(t0);
+    double input_pc = elapsed_ms(t1, t2);
+    double inflate = elapsed_ms(t2, t3);
+    double esdf = elapsed_ms(t3, t4);
+    if (total > 1000.0) {
+      std::cerr << "[SLOW sim_obs >1s] total=" << total << "ms raycast=" << elapsed_ms(t0, t1)
+                << " inputPC=" << input_pc << " inflate=" << inflate << " esdf=" << esdf << std::endl;
+    }
   }
 }
 
+void FuelEnvCore::inputHitPoints(const std::vector<Eigen::Vector3d>& hit_points,
+                                  const Eigen::Vector3d& camera_pos) {
+  if (hit_points.empty()) return;
+  sdf_map_->inputPointCloud(hit_points, camera_pos);
+  sdf_map_->clearAndInflateLocalMap();
+  sdf_map_->updateESDF3d();
+}
+
 std::vector<FrontierInfo> FuelEnvCore::detectFrontiers(const Eigen::Vector3d& agent_pos) {
+  auto t0 = now();
   frontier_finder_->searchFrontiers();
+  auto t1 = now();
   frontier_finder_->computeFrontiersToVisit();
-  return frontier_finder_->getFrontierInfos(agent_pos);
+  auto t2 = now();
+  auto infos = frontier_finder_->getFrontierInfos(agent_pos);
+  auto t3 = now();
+  double total = ms_since(t0);
+  if (total > 500.0) {
+    std::cerr << "[SLOW detect] total=" << total << "ms search=" << elapsed_ms(t0, t1)
+              << " compute=" << elapsed_ms(t1, t2) << " getInfo=" << elapsed_ms(t2, t3)
+              << " nf=" << infos.size() << std::endl;
+  }
+  return infos;
 }
 
 std::vector<Eigen::Vector3d> FuelEnvCore::planPath(const Eigen::Vector3d& start,

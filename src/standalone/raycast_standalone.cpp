@@ -176,13 +176,13 @@ bool RayCaster::input(const Eigen::Vector3d& start, const Eigen::Vector3d& end) 
   stepY_ = (int)signum((int)dy_);
   stepZ_ = (int)signum((int)dz_);
 
-  tMaxX_ = intbound(start_.x(), dx_);
-  tMaxY_ = intbound(start_.y(), dy_);
-  tMaxZ_ = intbound(start_.z(), dz_);
+  tMaxX_ = (dx_ != 0) ? intbound(start_.x(), dx_) : 1e30;
+  tMaxY_ = (dy_ != 0) ? intbound(start_.y(), dy_) : 1e30;
+  tMaxZ_ = (dz_ != 0) ? intbound(start_.z(), dz_) : 1e30;
 
-  tDeltaX_ = ((double)stepX_) / dx_;
-  tDeltaY_ = ((double)stepY_) / dy_;
-  tDeltaZ_ = ((double)stepZ_) / dz_;
+  tDeltaX_ = (dx_ != 0) ? ((double)stepX_) / dx_ : 1e30;
+  tDeltaY_ = (dy_ != 0) ? ((double)stepY_) / dy_ : 1e30;
+  tDeltaZ_ = (dz_ != 0) ? ((double)stepZ_) / dz_ : 1e30;
 
   dist_ = 0;
   step_num_ = 0;
@@ -194,6 +194,8 @@ bool RayCaster::input(const Eigen::Vector3d& start, const Eigen::Vector3d& end) 
 }
 
 bool RayCaster::nextId(Eigen::Vector3i& idx) {
+  if (step_num_ > 10000) return false;
+  step_num_++;
   auto tmp = Eigen::Vector3d(x_, y_, z_);
   idx = (tmp + offset_).cast<int>();
 
@@ -223,6 +225,8 @@ bool RayCaster::nextId(Eigen::Vector3i& idx) {
 }
 
 bool RayCaster::nextPos(Eigen::Vector3d& pos) {
+  if (step_num_ > 10000) return false;
+  step_num_++;
   auto tmp = Eigen::Vector3d(x_, y_, z_);
   pos = (tmp + half_) * resolution_;
 

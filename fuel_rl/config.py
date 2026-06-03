@@ -62,11 +62,11 @@ def default_map_params(
     p.map_size_y = size_y
     p.map_size_z = size_z
     p.obstacles_inflation = 0.199
-    p.ground_height = -1.0
+    p.ground_height = 0.0
     p.default_dist = 0.0
     p.p_hit = 0.65
     p.p_miss = 0.35
-    p.max_ray_length = 4.5
+    p.max_ray_length = 3.0
     p.optimistic = False
     if box_min is not None:
         p.box_min_x, p.box_min_y, p.box_min_z = box_min
@@ -77,7 +77,12 @@ def default_map_params(
 
 def default_frontier_params():
     from fuel_rl import FrontierParams
-    return FrontierParams()
+    p = FrontierParams()
+    p.cluster_size_xy = 0.5
+    p.candidate_rmin = 0.8
+    p.candidate_rmax = 1.5
+    p.min_visib_num = 3
+    return p
 
 
 def default_perception_params():
