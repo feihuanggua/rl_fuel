@@ -1,0 +1,13 @@
+[Unit]
+Description=SAC Seq11 skip unreachable maps, from seq8
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jdwsl/rl_fuel
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/python fuel_rl/train/train_sac_seq11.py --total-steps 500000 --lr 3e-5 --buffer-size 200000 --pretrained ./fuel_rl_checkpoints/sac_seq8/latest_checkpoint.pth --save-dir ./fuel_rl_checkpoints/sac_seq11
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

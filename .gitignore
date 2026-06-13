@@ -1,0 +1,54 @@
+# 模型权重
+*.pth
+*.pt
+
+# 快照数据
+*.npz
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+*.egg
+
+# 临时/调试脚本
+tmp_*.py
+test_*.py
+debug_*.py
+patch_*.py
+check_*.py
+test_import.py
+map_size_info.py
+diag_*.py
+diagnose_*.py
+analyze_*.py
+eval_*.py
+final_*.py
+quick_*.py
+find_*.py
+scale_*.py
+revert_*.py
+ckpt_*.py
+
+# Shell脚本（临时构建用）
+*.sh
+
+# 旧版sequence_env本地副本
+sequence_env_local.py
+
+# 可视化输出图片
+closest_*.png
+seq*_*.png
+compare_*.png
+curves_*.png
+
+# 地图副本
+ariadne_maps/
+
+# IDE
+.vscode/
+.idea/
+
+# 系统
+Thumbs.db
+.DS_Store

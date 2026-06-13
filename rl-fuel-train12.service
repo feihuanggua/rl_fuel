@@ -1,0 +1,13 @@
+[Unit]
+Description=SAC Seq12 Large ARiADNE 4m ray 40m maps
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jdwsl/rl_fuel
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/python fuel_rl/train/train_sac_seq12.py --total-steps 500000 --lr 1e-4 --buffer-size 200000 --save-dir ./fuel_rl_checkpoints/sac_seq12
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

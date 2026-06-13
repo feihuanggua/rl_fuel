@@ -1,0 +1,13 @@
+[Unit]
+Description=SAC Seq9 Curriculum Learning (easy->medium->hard)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jdwsl/rl_fuel
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/python fuel_rl/train/train_sac_curriculum.py --total-steps 300000 --save-dir ./fuel_rl_checkpoints/sac_seq9
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

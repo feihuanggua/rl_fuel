@@ -1,0 +1,13 @@
+[Unit]
+Description=SAC Seq8 Training (2m height, mixed maps)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jdwsl/rl_fuel
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/python fuel_rl/train/train_sac_seq.py --total-steps 200000 --map-type mixed --save-dir ./fuel_rl_checkpoints/sac_seq8
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

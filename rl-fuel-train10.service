@@ -1,0 +1,13 @@
+[Unit]
+Description=SAC Seq10 Fine-tune on pure ARiADNE (from seq8)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jdwsl/rl_fuel
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/python fuel_rl/train/train_sac_seq10.py --total-steps 500000 --lr 5e-5 --buffer-size 200000 --pretrained ./fuel_rl_checkpoints/sac_seq8/latest_checkpoint.pth --save-dir ./fuel_rl_checkpoints/sac_seq10
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
