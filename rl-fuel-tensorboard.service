@@ -1,0 +1,13 @@
+[Unit]
+Description=TensorBoard for RL training
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/jdwsl/miniconda3/envs/rl_fuel/bin/tensorboard --logdir /home/jdwsl/rl_fuel/fuel_rl_checkpoints --port 6006 --bind_all
+Restart=always
+RestartSec=5
+Environment=TENSORBOARD_PROXY_URL=/tb/
+
+[Install]
+WantedBy=default.target
