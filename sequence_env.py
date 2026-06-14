@@ -272,7 +272,7 @@ class SequenceEnv(gym.Env):
         new_cell = (int(vp[0] / CELL_SIZE), int(vp[1] / CELL_SIZE))
         if new_cell in self._cell_last_visit:
             steps_since = self.step_count - self._cell_last_visit[new_cell]
-            if steps_since > 5:
+            if steps_since > 30:
                 reward -= min(steps_since * 0.3, 8.0)
         self._cell_last_visit[new_cell] = self.step_count
 
