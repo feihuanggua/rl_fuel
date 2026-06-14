@@ -126,7 +126,9 @@ class SequenceEnv(gym.Env):
         self._cached_frontiers = []
         self._cached_obs = None
         self._skip_set = set()
-        self._visited_cells = set()
+        self._cell_last_visit = {}
+        start_cell = (int(self.agent_pos[0] / 5.0), int(self.agent_pos[1] / 5.0))
+        self._cell_last_visit[start_cell] = 0
         return self._get_obs(), {}
 
     def _get_exploration_progress(self):
@@ -262,23 +264,22 @@ class SequenceEnv(gym.Env):
 
         self.last_progress = new_progress
 
-        # --- Reward v2: revisit-aware ---
-        CELL_SIZE = 2.0
-        new_cell = (int(vp[0] / CELL_SIZE), int(vp[1] / CELL_SIZE))
-        old_cell = (int(old_pos[0] / CELL_SIZE), int(old_pos[1] / CELL_SIZE))
-        self._visited_cells.add(old_cell)
-        is_revisit = new_cell in self._visited_cells
-        self._visited_cells.add(new_cell)
-
+        # --- Reward v3: region-level revisit ---
         reward = delta * 200.0 - 1.0
-        if is_revisit:
-            reward -= eucl_dist * 2.0
-        else:
-            reward -= eucl_dist * 0.3
+        reward -= eucl_dist * 0.5
+
+        CELL_SIZE = 5.0
+        new_cell = (int(vp[0] / CELL_SIZE), int(vp[1] / CELL_SIZE))
+        if new_cell in self._cell_last_visit:
+            steps_since = self.step_count - self._cell_last_visit[new_cell]
+            if steps_since > 5:
+                reward -= min(steps_since * 0.3, 8.0)
+        self._cell_last_visit[new_cell] = self.step_count
+
         if delta > 0.01:
             reward += 2.0
         if delta < 0.003 and eucl_dist > 5.0:
-            reward -= 5.0
+            reward -= 3.0
         done = False
 
         if new_progress >= self.target_coverage:
