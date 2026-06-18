@@ -177,9 +177,12 @@ class SequenceEnv(gym.Env):
                 direction[:2] = 0.0
 
             mask[vis_idx] = 1.0
-            frontier_feats[vis_idx, 0:3] = center / 10.0
+            rel_pos = center - self.agent_pos
+            frontier_feats[vis_idx, 0] = np.clip(rel_pos[0] / 20.0, -1.0, 1.0)
+            frontier_feats[vis_idx, 1] = np.clip(rel_pos[1] / 20.0, -1.0, 1.0)
+            frontier_feats[vis_idx, 2] = np.clip(rel_pos[2] / 2.0, -1.0, 1.0)
             frontier_feats[vis_idx, 3] = min(f.frontier_size / 2000.0, 1.0)
-            frontier_feats[vis_idx, 4] = min(eucl_dist / 15.0, 1.0)
+            frontier_feats[vis_idx, 4] = min(eucl_dist / 25.0, 1.0)
             frontier_feats[vis_idx, 5] = min(f.best_viewpoint_visib_num / 100.0, 1.0)
             frontier_feats[vis_idx, 6:8] = direction[:2]
             self._visible_indices.append(i)
