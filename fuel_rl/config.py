@@ -101,3 +101,39 @@ def fast_perception_params():
 def default_astar_params():
     from fuel_rl import AstarParams
     return AstarParams()
+
+
+# ── 相机参数一致性检查 ──
+# C++ simulateObservation 与 GPU 渲染器应使用相同的内参。
+# 如果检测到不一致会在首次环境创建时打印警告。
+
+_CPU_CAMERA_PARAMS = {
+    "fx": 387.229, "fy": 387.229,
+    "cx": 321.046, "cy": 243.449,
+    "width": 640, "height": 480,
+    "max_range": 4.5, "min_range": 0.2,
+    "free_dist": 5.0,
+}
+
+
+def validate_camera_params(gpu_fx, gpu_fy, gpu_cx, gpu_cy,
+                           gpu_width, gpu_height, gpu_max_range, gpu_free_dist):
+    """验证 GPU 渲染器参数与 C++ 核心一致."""
+    import warnings
+    issues = []
+    cpu = _CPU_CAMERA_PARAMS
+    if abs(gpu_fx - cpu["fx"]) > 0.1 or abs(gpu_fy - cpu["fy"]) > 0.1:
+        issues.append(f"fx/fy: GPU ({gpu_fx:.1f}, {gpu_fy:.1f}) vs C++ ({cpu['fx']:.3f}, {cpu['fy']:.3f})")
+    if abs(gpu_cx - cpu["cx"]) > 0.1 or abs(gpu_cy - cpu["cy"]) > 0.1:
+        issues.append(f"cx/cy: GPU ({gpu_cx:.1f}, {gpu_cy:.1f}) vs C++ ({cpu['cx']:.3f}, {cpu['cy']:.3f})")
+    if gpu_width != cpu["width"] or gpu_height != cpu["height"]:
+        issues.append(f"resolution: GPU ({gpu_width}x{gpu_height}) vs C++ ({cpu['width']}x{cpu['height']})")
+    if abs(gpu_max_range - cpu["max_range"]) > 0.01:
+        issues.append(f"max_range: GPU ({gpu_max_range:.2f}) vs C++ ({cpu['max_range']})")
+    if abs(gpu_free_dist - cpu["free_dist"]) > 0.01:
+        issues.append(f"free_dist: GPU ({gpu_free_dist:.2f}) vs C++ ({cpu['free_dist']})")
+    if issues:
+        warnings.warn("GPU/CPU camera parameter mismatch detected:\n  " + "\n  ".join(issues)
+                      + "\n  This will cause inconsistent observations between GPU and CPU paths.",
+                      stacklevel=2)
+    return len(issues) == 0

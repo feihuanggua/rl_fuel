@@ -9,7 +9,9 @@ import numpy as np
 
 class GPUDepthRenderer:
     def __init__(self, gt_points_np, device="cuda",
-                 fx=381.0, fy=381.0, cx=320.0, cy=240.0,
+                 # Camera intrinsics match FUEL's camera.yaml & C++ simulateObservation
+                 # fx=387.229, fy=387.229, cx=321.046, cy=243.449
+                 fx=387.229, fy=387.229, cx=321.046, cy=243.449,
                  width=640, height=480, skip_pixel=4, margin=1,
                  max_range=4.5, min_range=0.2, free_dist=5.0):
         self.device = device

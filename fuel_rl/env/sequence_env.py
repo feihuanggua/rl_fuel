@@ -17,6 +17,7 @@ from fuel_rl.config import (default_map_params, default_frontier_params,
                             fast_perception_params, default_astar_params)
 from fuel_rl.map_loader import generate_random_map_for_fuel
 from fuel_rl.env.gpu_depth_renderer import GPUDepthRenderer
+from fuel_rl.config import validate_camera_params
 
 MAX_FRONTIERS = 50
 MAP_SIZE_2D = 64
@@ -98,6 +99,13 @@ class SequenceEnv(gym.Env):
 
         if self._use_gpu:
             self._gpu_renderer = GPUDepthRenderer(pts)
+            # 验证 GPU 渲染器相机参数与 C++ 核心一致
+            validate_camera_params(
+                self._gpu_renderer.fx, self._gpu_renderer.fy,
+                self._gpu_renderer.cx, self._gpu_renderer.cy,
+                self._gpu_renderer.width, self._gpu_renderer.height,
+                self._gpu_renderer.max_range, self._gpu_renderer.free_dist,
+            )
 
         self.agent_pos = np.array([0.0, 0.0, 1.5])
         for yaw in [0, np.pi/2, np.pi, -np.pi/2]:

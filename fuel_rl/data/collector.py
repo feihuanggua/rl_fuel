@@ -5,34 +5,42 @@ import torch
 
 
 def build_3channel_grid(core, frontier, grid_size=32, grid_z=10, resolution=0.2):
-    """构建 [3, grid_size, grid_size, grid_z] 体素网格."""
+    """构建 [3, grid_size, grid_size, grid_z] 体素网格.
+
+    优化: 预计算所有世界坐标 (numpy meshgrid), 用单次展平遍历替代三重 Python 循环,
+    减少 Python→C++ 调用开销和中间 np.array() 分配.
+    """
     center = np.array(frontier.average, dtype=np.float64)
     nx, ny, nz = grid_size, grid_size, grid_z
-    half_x, half_y, half_z = nx / 2.0, ny / 2.0, nz / 2.0
+    half = np.array([nx / 2.0, ny / 2.0, nz / 2.0])
 
-    ch_occ = np.zeros((nx, ny, nz), dtype=np.float32)
-    ch_free = np.zeros((nx, ny, nz), dtype=np.float32)
+    # 预计算所有体素的世界坐标 [nx*ny*nz, 3]
+    offsets = (np.mgrid[0:nx, 0:ny, 0:nz].reshape(3, -1).T.astype(np.float64) - half + 0.5) * resolution
+    world_coords = offsets + center  # broadcasting: center [3] + [N, 3]
 
-    for dz in range(nz):
-        for dy in range(ny):
-            for dx in range(nx):
-                wx = center[0] + (dx - half_x + 0.5) * resolution
-                wy = center[1] + (dy - half_y + 0.5) * resolution
-                wz = center[2] + (dz - half_z + 0.5) * resolution
-                occ = core.get_occupancy(np.array([wx, wy, wz]))
-                if occ == 2:
-                    ch_occ[dx, dy, dz] = 1.0
-                elif occ == 1:
-                    ch_free[dx, dy, dz] = 1.0
+    # 展平查询 occupancy, 一次 Python 循环 (每个 voxel 仍需 C++ 调用)
+    ch_occ = np.zeros(nx * ny * nz, dtype=np.float32)
+    ch_free = np.zeros(nx * ny * nz, dtype=np.float32)
 
+    for i in range(len(world_coords)):
+        occ = core.get_occupancy(world_coords[i])
+        if occ == 2:
+            ch_occ[i] = 1.0
+        elif occ == 1:
+            ch_free[i] = 1.0
+
+    ch_occ = ch_occ.reshape(nx, ny, nz)
+    ch_free = ch_free.reshape(nx, ny, nz)
+
+    # 前沿通道 (向量化, 无变化)
     ch_frontier = np.zeros((nx, ny, nz), dtype=np.float32)
     cells = np.array(frontier.cells)
     if len(cells) > 0:
         local = (cells - center) / resolution
         idx = np.stack([
-            (local[:, 0] + half_x).astype(int),
-            (local[:, 1] + half_y).astype(int),
-            (local[:, 2] + half_z).astype(int),
+            (local[:, 0] + half[0]).astype(int),
+            (local[:, 1] + half[1]).astype(int),
+            (local[:, 2] + half[2]).astype(int),
         ], axis=1)
         valid = ((idx[:, 0] >= 0) & (idx[:, 0] < nx) &
                  (idx[:, 1] >= 0) & (idx[:, 1] < ny) &
